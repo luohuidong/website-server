@@ -7,40 +7,53 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+
 import { PostsService } from './posts.service';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
+import { CreatePostDto, UpdatePostDto, FindAllDto } from './dto';
 
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Post()
-  create(@Body() createPostDto: CreatePostDto) {
-    console.log(
-      '🚀 ~ file: posts.controller.ts:20 ~ PostsController ~ create ~ createPostDto:',
-      createPostDto,
-    );
-    return this.postsService.create(createPostDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.postsService.findAll();
+  async create(@Body() createPostDto: CreatePostDto) {
+    return this.postsService.create({
+      ...createPostDto,
+      tags: createPostDto.tags ? createPostDto.tags.join(',') : undefined,
+    });
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.postsService.findOne(+id);
+    return this.postsService.findOne({ id: Number(id) });
+  }
+
+  @Get()
+  findAll(@Body() findAllDto: FindAllDto) {
+    return this.postsService.findAll(findAllDto);
   }
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
-    return this.postsService.update(+id, updatePostDto);
+    const data: Prisma.PostUpdateInput = {};
+    const keys = Object.keys(updatePostDto) as (keyof UpdatePostDto)[];
+    keys.forEach((key) => {
+      if (key === 'tags') {
+        data[key] = updatePostDto[key].join(',');
+      } else {
+        data[key] = updatePostDto[key];
+      }
+    });
+
+    return this.postsService.update({
+      where: { id: Number(id) },
+      data,
+    });
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.postsService.remove(+id);
+    return this.postsService.remove({ id: Number(id) });
   }
 }
